@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0ea5e9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Customer Manager">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Customer Manager - 顧客入退店管理システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 5px;
+        }
+
+        .container {
+            max-width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header h1 {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .datetime {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .btn-header {
+            padding: 3px 8px;
+            border: 1px solid white;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .btn-header:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 2px;
+            padding: 2px;
+            max-height: calc(100vh - 70px);
+            overflow-y: auto;
+        }
+        
+        /* 極小画面では1列表示（最初に定義） */
+        @media screen and (max-width: 400px) {
+            .grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+        
+        /* 縦長画面（401px以上）では2列表示 */
+        @media screen and (min-width: 401px) and (orientation: portrait) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+        
+        /* 横長画面では5列表示 */
+        @media screen and (orientation: landscape) {
+            .grid {
+                grid-template-columns: repeat(5, 1fr) !important;
+            }
+        }
+
+        .customer-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            padding: 2px;
+            background: #f9f9f9;
+            position: relative;
+            font-size: 9px;
+        }
+
+        .customer-card.active {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+
+        .customer-card.alert {
+            animation: blink 1s infinite;
+            border-color: #ff5722;
+        }
+
+        @keyframes blink {
+            0%, 50% { background-color: #ffebee; }
+            51%, 100% { background-color: #fff; }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1px;
+        }
+
+        .group-number {
+            font-size: 10px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .time-input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            margin-bottom: 1px;
+        }
+
+        .time-input-label {
+            font-size: 7px;
+            color: #666;
+        }
+
+        .time-input {
+            padding: 1px 2px;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            font-size: 9px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            background: white;
+        }
+        
+        .time-select {
+            padding: 1px 2px;
+            border: 1px solid #ddd;
+            border-radius: 2px;
+            font-size: 9px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .time-info {
+            font-size: 7px;
+            margin: 1px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .elapsed-time {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            margin: 1px 0;
+            color: #333;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1px;
+            margin-top: 1px;
+        }
+
+        button {
+            flex: 1;
+            padding: 3px 1px;
+            border: none;
+            border-radius: 2px;
+            font-size: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-checkin {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-checkin:hover {
+            background: #45a049;
+        }
+
+        .btn-checkin:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-checkout {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-checkout:hover {
+            background: #e68900;
+        }
+
+        .btn-checkout:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background: #da190b;
+        }
+
+        .btn-cancel:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-confirm {
+            background: #2196f3;
+            color: white;
+            margin-top: 2px;
+            padding: 8px;
+            font-size: 11px;
+            width: 100%;
+        }
+
+        .btn-confirm:hover {
+            background: #0b7dda;
+        }
+
+        .alert-message {
+            background: #ff5722;
+            color: white;
+            padding: 3px;
+            border-radius: 2px;
+            font-size: 9px;
+            text-align: center;
+            margin-top: 2px;
+            font-weight: bold;
+        }
+
+        .btn-cancel {
+            width: 100%;
+            margin-top: 1px;
+            padding: 2px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90%;
+            width: 300px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-yes {
+            background: #f44336;
+            color: white;
+        }
+
+        .modal-btn-yes:hover {
+            background: #da190b;
+        }
+
+        .modal-btn-no {
+            background: #9e9e9e;
+            color: white;
+        }
+
+        .modal-btn-no:hover {
+            background: #757575;
+        }
+
+        @media (max-width: 400px) {
+            .grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-left {
+                margin-bottom: 5px;
+            }
+            
+            .header h1 {
+                font-size: 12px;
+            }
+            
+            .datetime {
+                font-size: 10px;
+            }
+            
+            .btn-header {
+                font-size: 8px;
+                padding: 2px 6px;
+            }
+        }
+
+        @media (orientation: portrait) and (min-width: 401px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1 id="headerTitle">🏪 顧客入退店管理システム</h1>
+                <div class="datetime" id="currentDateTime"></div>
+            </div>
+            <div class="header-controls">
+                <button class="btn-header" onclick="manager.toggleLanguage()" id="langBtn">English</button>
+                <button class="btn-header" onclick="manager.confirmAllClear()" id="clearBtn">オールクリア</button>
+            </div>
+        </div>
+        <div class="grid" id="customerGrid"></div>
+    </div>
+
+    <!-- 確認モーダル -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <h3 id="modalMessage">確認</h3>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-yes" id="modalYes">はい</button>
+                <button class="modal-btn modal-btn-no" onclick="manager.closeModal()">いいえ</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="alertSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiDcIGGS56+ibUBELTKXh8bllHAU2jdXuzn0vBSp7yfDaijkJEV+25OynWBUIQ5zi8L9sIAUrgs/y2Ik3CBhkuevom1ARDEuk4PG5ZRsFNo3V7s59LgUre8nw2oo5CRBftuTsp1gVCEOc4vC/bCAFK4PQ8tmJNwgYY7nr6JtQEQxLpODxuWUbBTaN1e7OfS4FK3vJ8NqKOQkPYLbk7KdYFQhDnOLwv2wgBSuD0PLZiTcIGGO56+ibUBEMS6Tg8bllGwU2jdXuzn0uBSt7yfDaijkJD2C25OynWBUIQ5zi8L9sIAUrg9Dy2Yk3CBhjuevolFARDEuk4PG5ZRsFNo3V7s59LgUre8nw2oo5CQ9gtuTsp1gVCEOc4vC/bCAFK4PQ8tmJNwgYY7nr6JtQEQxLpODxuWUbBTaN1e7OfS4FK3vJ8NqKOQkPYLbk7KdYFQhDnOLwv2wgBSuD0PLZiTcIGGO56+ibUBEMS6Tg8bllGwU2jdXuzn0uBSt7yfDaijkJD2C25OynWBUIQ5zi8L9sIAUrg9Dy2Yk3CBhjuevolFARDEuk4PG5ZRsFNo3V7s59LgUre8nw2oo5CQ9gtuTsp1gVCEOc4vC/bCAFK4PQ8tmJNwgYY7nr6JtQEQxLpODxuWUbBTaN1e7OfS4FK3vJ8NqKOQkPYLbk7KdYFQhDnOLwv2wgBSuD0PLZiTcIGGO56+ibUBEMS6Tg8bllGwU2jdXuzn0uBSt7yfDaijkJD2C25OynWBUIQ5zi8L9sIAUrg9Dy2Yk3CBhjuevolFARDEuk4PG5ZRsFNo3V7s59LgUre8nw2oo5CQ9gtuTsp1gVCEOc4vC/bCAFK4PQ8tmJNwgYY7nr6JtQEQxLpODxuWUbBTaN1e7OfS4FK3vJ8NqKOQkPYLbk7KdYFQhDnOLwv2wgBSuD0PLZiTcIGGO56+ibUBEMS6Tg8bllGwU2jdXuzn0uBSt7yfDaijkJD2C25OynWBUIQ5zi8L9sIAUrg9Dy2Yk3CBhjuevolFARDEuk4PG5ZRsFNo3V7s59LgUre8nw2oo5CQ9gtuTsp1gVCEOc4vC/bCAFK4PQ8tmJNwgYY7nr6JtQEQxLpODxuWUbBTaN1e7OfS4FK3vJ8NqKOQkPYLbk7KdYFQhDnOLwv2wgBSuD0PLZiTcIGGO56+ibUBEMS6Tg8bllGwU2jdXuzn0uBSt7yfDaijkJD2C25OynWBUIQ5zi8L9sIAUrg9Dy" type="audio/wav">
+    </audio>
+
+    <script>
+        class CustomerManager {
+            constructor() {
+                this.customers = [];
+                this.alertSound = document.getElementById('alertSound');
+                this.currentLang = 'ja';
+                this.modalCallback = null;
+                this.translations = {
+                    ja: {
+                        title: '🏪 顧客入退店管理システム',
+                        langBtn: 'English',
+                        clearBtn: 'オールクリア',
+                        groupNo: 'No.',
+                        plannedTime: '予定時刻',
+                        checkin: '入店',
+                        checkout: '退店',
+                        undoCheckout: '退店取消',
+                        cancel: 'キャンセル',
+                        confirm: '確認',
+                        checkinTime: '入店',
+                        checkoutTime: '退店',
+                        planned5min: '予定時刻5分前',
+                        plannedTimeAlert: '予定時刻',
+                        hour1: 'まもなく1時間です',
+                        hour2: 'まもなく2時間です',
+                        hour3: 'まもなく3時間です',
+                        hour4: 'まもなく4時間です',
+                        hour5: 'まもなく5時間です',
+                        hour6: 'まもなく6時間です',
+                        hour7: 'まもなく7時間です',
+                        hour8: 'まもなく8時間です',
+                        confirmCancel: 'キャンセルしますか?',
+                        confirmClear: 'オールクリアしますか?',
+                        yes: 'はい',
+                        no: 'いいえ'
+                    },
+                    en: {
+                        title: '🏪 Customer Management System',
+                        langBtn: '日本語',
+                        clearBtn: 'Clear All',
+                        groupNo: 'No.',
+                        plannedTime: 'End Time',
+                        checkin: 'Check In',
+                        checkout: 'Check Out',
+                        undoCheckout: 'Undo Out',
+                        cancel: 'Cancel',
+                        confirm: 'Confirm',
+                        checkinTime: 'In',
+                        checkoutTime: 'Out',
+                        planned5min: '5min before end',
+                        plannedTimeAlert: 'Planned time',
+                        hour1: 'Almost 1 hour',
+                        hour2: 'Almost 2 hours',
+                        hour3: 'Almost 3 hours',
+                        hour4: 'Almost 4 hours',
+                        hour5: 'Almost 5 hours',
+                        hour6: 'Almost 6 hours',
+                        hour7: 'Almost 7 hours',
+                        hour8: 'Almost 8 hours',
+                        confirmCancel: 'Cancel this entry?',
+                        confirmClear: 'Clear all data?',
+                        yes: 'Yes',
+                        no: 'No'
+                    }
+                };
+                this.init();
+            }
+
+            init() {
+                // localStorageからデータを復元
+                this.loadFromStorage();
+                
+                // データがない場合は初期化
+                if (this.customers.length === 0) {
+                    for (let i = 1; i <= 20; i++) {
+                        this.customers.push({
+                            id: i,
+                            checkinTime: null,
+                            checkoutTime: null,
+                            elapsedSeconds: 0,
+                            displayedElapsedSeconds: null,
+                            isActive: false,
+                            isCheckedOut: false,
+                            plannedEndTime: null,
+                            lastAlertTime: 0,
+                            lastAlertMinute: -1,
+                            lastPlannedAlert: null,
+                            hasAlert: false,
+                            alertType: null
+                        });
+                    }
+                }
+                
+                this.render();
+                this.updateDateTime();
+                this.startTimer();
+                this.updateGridLayout(); // 初期レイアウト設定
+                
+                // 日時を1秒ごとに更新
+                setInterval(() => this.updateDateTime(), 1000);
+                
+                // 5秒ごとにデータを保存
+                setInterval(() => this.saveToStorage(), 5000);
+                
+                // 画面向き変更を監視
+                window.addEventListener('resize', () => this.updateGridLayout());
+                window.addEventListener('orientationchange', () => this.updateGridLayout());
+                
+                // ページを離れる前に保存
+                window.addEventListener('beforeunload', () => this.saveToStorage());
+            }
+
+            saveToStorage() {
+                try {
+                    const data = this.customers.map(customer => ({
+                        ...customer,
+                        checkinTime: customer.checkinTime ? customer.checkinTime.toISOString() : null,
+                        checkoutTime: customer.checkoutTime ? customer.checkoutTime.toISOString() : null
+                    }));
+                    localStorage.setItem('customerManagementData', JSON.stringify(data));
+                } catch (e) {
+                    console.error('データ保存エラー:', e);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const saved = localStorage.getItem('customerManagementData');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        this.customers = data.map(customer => ({
+                            ...customer,
+                            checkinTime: customer.checkinTime ? new Date(customer.checkinTime) : null,
+                            checkoutTime: customer.checkoutTime ? new Date(customer.checkoutTime) : null
+                        }));
+                    }
+                } catch (e) {
+                    console.error('データ読み込みエラー:', e);
+                    this.customers = [];
+                }
+            }
+
+            updateGridLayout() {
+                const grid = document.getElementById('customerGrid');
+                if (!grid) return;
+                
+                const isPortrait = window.innerHeight > window.innerWidth;
+                const width = window.innerWidth;
+                
+                if (width <= 400) {
+                    grid.style.gridTemplateColumns = '1fr';
+                } else if (isPortrait) {
+                    grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                } else {
+                    grid.style.gridTemplateColumns = 'repeat(5, 1fr)';
+                }
+            }
+
+            generateTimeOptions(existingTime = null) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                
+                // 現在時刻の次の10分刻みを開始地点にする
+                const nextMinute = Math.ceil(currentMinute / 10) * 10;
+                let startHour = currentHour;
+                let startMinute = nextMinute;
+                
+                if (startMinute >= 60) {
+                    startHour = (startHour + 1) % 24;
+                    startMinute = 0;
+                }
+                
+                const options = [];
+                
+                // 既に設定済みの予定時刻があれば最初に追加（過去でも保持）
+                if (existingTime && existingTime !== '') {
+                    options.push(existingTime);
+                }
+                
+                // 8時間以内の時刻のみ（10分刻み48個）
+                for (let i = 0; i < 48; i++) {
+                    const totalMinutes = startHour * 60 + startMinute + (i * 10);
+                    const hour = Math.floor(totalMinutes / 60) % 24;
+                    const minute = totalMinutes % 60;
+                    const h = String(hour).padStart(2, '0');
+                    const m = String(minute).padStart(2, '0');
+                    const timeStr = `${h}:${m}`;
+                    
+                    // 既存の時刻と重複しない場合のみ追加
+                    if (timeStr !== existingTime) {
+                        options.push(timeStr);
+                    }
+                }
+                
+                return options;
+            }
+
+            toggleLanguage() {
+                this.currentLang = this.currentLang === 'ja' ? 'en' : 'ja';
+                this.updateLanguage();
+                this.render();
+            }
+
+            updateLanguage() {
+                const t = this.translations[this.currentLang];
+                document.getElementById('headerTitle').textContent = t.title;
+                document.getElementById('langBtn').textContent = t.langBtn;
+                document.getElementById('clearBtn').textContent = t.clearBtn;
+            }
+
+            showModal(message, callback) {
+                const modal = document.getElementById('confirmModal');
+                const modalMessage = document.getElementById('modalMessage');
+                const modalYes = document.getElementById('modalYes');
+                
+                modalMessage.textContent = message;
+                modalYes.onclick = () => {
+                    callback();
+                    this.closeModal();
+                };
+                
+                modal.classList.add('show');
+            }
+
+            closeModal() {
+                const modal = document.getElementById('confirmModal');
+                modal.classList.remove('show');
+            }
+
+            confirmCancel(id) {
+                const t = this.translations[this.currentLang];
+                this.showModal(t.confirmCancel, () => this.cancelEntry(id));
+            }
+
+            cancelEntry(id) {
+                const customer = this.customers[id - 1];
+                customer.checkinTime = null;
+                customer.checkoutTime = null;
+                customer.displayedElapsedSeconds = null;
+                customer.isActive = false;
+                customer.isCheckedOut = false;
+                customer.plannedEndTime = null;
+                customer.lastAlertTime = 0;
+                customer.lastAlertMinute = -1;
+                customer.lastPlannedAlert = null;
+                customer.hasAlert = false;
+                customer.alertType = null;
+                this.saveToStorage();
+                this.render();
+            }
+
+            confirmAllClear() {
+                const t = this.translations[this.currentLang];
+                this.showModal(t.confirmClear, () => this.allClear());
+            }
+
+            allClear() {
+                this.customers.forEach(customer => {
+                    customer.checkinTime = null;
+                    customer.checkoutTime = null;
+                    customer.displayedElapsedSeconds = null;
+                    customer.isActive = false;
+                    customer.isCheckedOut = false;
+                    customer.plannedEndTime = null;
+                    customer.lastAlertTime = 0;
+                    customer.lastAlertMinute = -1;
+                    customer.lastPlannedAlert = null;
+                    customer.hasAlert = false;
+                    customer.alertType = null;
+                });
+                this.saveToStorage();
+                this.render();
+            }
+
+            updateDateTime() {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ja-JP', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    weekday: 'short'
+                });
+                const timeStr = now.toLocaleTimeString('ja-JP');
+                document.getElementById('currentDateTime').textContent = `${dateStr} ${timeStr}`;
+            }
+
+            checkin(id) {
+                const customer = this.customers[id - 1];
+                customer.checkinTime = new Date();
+                customer.checkoutTime = null;
+                customer.displayedElapsedSeconds = null;
+                customer.isActive = true;
+                customer.isCheckedOut = false;
+                customer.lastAlertTime = 0;
+                customer.lastAlertMinute = -1;
+                customer.lastPlannedAlert = null;
+                customer.hasAlert = false;
+                customer.alertType = null;
+                this.saveToStorage();
+                this.render();
+            }
+
+            checkout(id) {
+                const customer = this.customers[id - 1];
+                customer.checkoutTime = new Date();
+                
+                // 退店時の実際の経過時間を計算して保存
+                if (customer.checkinTime) {
+                    const elapsedMs = customer.checkoutTime - customer.checkinTime;
+                    customer.displayedElapsedSeconds = Math.floor(elapsedMs / 1000);
+                    customer.elapsedSeconds = customer.displayedElapsedSeconds;
+                }
+                
+                customer.isActive = false;
+                customer.isCheckedOut = true;
+                customer.hasAlert = false;
+                customer.alertType = null;
+                this.saveToStorage();
+                this.render();
+            }
+
+            undoCheckout(id) {
+                const customer = this.customers[id - 1];
+                customer.checkoutTime = null;
+                customer.displayedElapsedSeconds = null;
+                customer.isActive = true;
+                customer.isCheckedOut = false;
+                // elapsedSecondsは実時間計算されるので、ここでは何もしない
+                this.saveToStorage();
+                this.render();
+            }
+
+            setPlannedEndTime(id, timeStr) {
+                const customer = this.customers[id - 1];
+                
+                if (!timeStr || timeStr === '') {
+                    customer.plannedEndTime = null;
+                    this.saveToStorage();
+                    return;
+                }
+                
+                if (/^\d{2}:\d{2}$/.test(timeStr)) {
+                    const now = new Date();
+                    const [hours, minutes] = timeStr.split(':');
+                    const inputHours = parseInt(hours);
+                    const inputMinutes = parseInt(minutes);
+                    
+                    // 有効な時刻範囲かチェック
+                    if (inputHours < 0 || inputHours > 23 || inputMinutes < 0 || inputMinutes > 59) {
+                        const errorMsg = this.currentLang === 'ja' 
+                            ? '正しい時刻を入力してください（00:00〜23:59）'
+                            : 'Please enter a valid time (00:00-23:59)';
+                        alert(errorMsg);
+                        return;
+                    }
+                    
+                    const plannedDate = new Date();
+                    plannedDate.setHours(inputHours, inputMinutes, 0, 0);
+                    
+                    // 基準時刻：入店済みなら入店時刻、未入店なら現在時刻
+                    const baseTime = customer.checkinTime ? new Date(customer.checkinTime) : now;
+                    
+                    // 予定時刻が基準時刻より前の場合は翌日とみなす
+                    if (plannedDate <= baseTime) {
+                        plannedDate.setDate(plannedDate.getDate() + 1);
+                    }
+                    
+                    // 入店時刻から予定時刻までの時間差を計算
+                    const timeDiff = plannedDate - baseTime;
+                    const hoursDiff = timeDiff / (1000 * 60 * 60);
+                    
+                    // 8時間以上先の場合はエラー
+                    if (hoursDiff > 8) {
+                        const errorMsg = this.currentLang === 'ja' 
+                            ? '予定時刻は入店時刻から8時間以内に設定してください。\n（日をまたいでも可）'
+                            : 'Planned time must be within 8 hours from check-in.\n(Can span across days)';
+                        alert(errorMsg);
+                        return;
+                    }
+                    
+                    customer.plannedEndTime = timeStr;
+                    this.saveToStorage();
+                }
+            }
+
+            confirmAlert(id) {
+                const customer = this.customers[id - 1];
+                customer.hasAlert = false;
+                customer.alertType = null;
+                // 確認した時の経過分数を記録
+                customer.lastAlertMinute = Math.floor(customer.elapsedSeconds / 60);
+                this.render();
+            }
+
+            startTimer() {
+                setInterval(() => {
+                    let hasActiveCustomer = false;
+                    let needsFullRender = false;
+                    
+                    this.customers.forEach(customer => {
+                        if (customer.isActive && customer.checkinTime) {
+                            hasActiveCustomer = true;
+                            
+                            // 現在時刻から入店時刻を引いて実際の経過時間を計算（秒単位）
+                            const now = new Date();
+                            const elapsedMs = now - new Date(customer.checkinTime);
+                            customer.elapsedSeconds = Math.floor(elapsedMs / 1000);
+                            const elapsedMinutes = Math.floor(customer.elapsedSeconds / 60);
+                            
+                            if (!customer.hasAlert) {
+                                
+                                // ===== 予定時刻アラート（設定されている場合） =====
+                                if (customer.plannedEndTime) {
+                                    const [ph, pm] = customer.plannedEndTime.split(':');
+                                    const plannedDate = new Date();
+                                    plannedDate.setHours(parseInt(ph), parseInt(pm), 0, 0);
+                                    
+                                    // 予定時刻が入店時刻より前なら翌日とみなす
+                                    if (plannedDate < new Date(customer.checkinTime)) {
+                                        plannedDate.setDate(plannedDate.getDate() + 1);
+                                    }
+                                    
+                                    const timeUntilPlanned = Math.floor((plannedDate - now) / 1000);
+                                    const plannedPassed = timeUntilPlanned < 0;
+                                    
+                                    // 予定時刻がまだ過ぎていない場合
+                                    if (!plannedPassed) {
+                                        // 予定時刻の5分前アラート
+                                        if (timeUntilPlanned >= 299 && timeUntilPlanned <= 301
+                                            && customer.lastPlannedAlert !== '5min') {
+                                            customer.hasAlert = true;
+                                            customer.alertType = 'planned5min';
+                                            customer.lastPlannedAlert = '5min';
+                                            this.playAlert();
+                                            needsFullRender = true;
+                                        }
+                                        // 予定時刻ちょうどアラート
+                                        else if (timeUntilPlanned >= -1 && timeUntilPlanned <= 1
+                                            && customer.lastPlannedAlert !== 'ontime') {
+                                            customer.hasAlert = true;
+                                            customer.alertType = 'plannedTimeAlert';
+                                            customer.lastPlannedAlert = 'ontime';
+                                            this.playAlert();
+                                            needsFullRender = true;
+                                        }
+                                        // 予定時刻のアラート中は1時間ごとアラートをスキップ
+                                        return;
+                                    }
+                                    // 予定時刻を過ぎたら通常の1時間ごとアラートへ
+                                }
+                                
+                                // ===== 1時間ごとの5分前アラート（1〜8時間）=====
+                                // 対象: 55分, 115分, 175分, ..., 475分 (=55+60n分)
+                                for (let hour = 1; hour <= 8; hour++) {
+                                    const targetMinute = hour * 60 - 5; // 55, 115, 175...
+                                    
+                                    if (elapsedMinutes === targetMinute
+                                        && customer.lastAlertMinute !== targetMinute) {
+                                        const alertKey = `hour${hour}`;
+                                        customer.hasAlert = true;
+                                        customer.alertType = alertKey;
+                                        customer.lastAlertMinute = targetMinute;
+                                        this.playAlert();
+                                        needsFullRender = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        // 退店済みの顧客は表示用の時間を固定
+                        else if (customer.isCheckedOut && customer.displayedElapsedSeconds !== null) {
+                            customer.elapsedSeconds = customer.displayedElapsedSeconds;
+                        }
+                    });
+                    
+                    if (needsFullRender) {
+                        this.render();
+                    } else if (hasActiveCustomer) {
+                        this.updateElapsedTimes();
+                    }
+                }, 1000);
+            }
+
+            updateElapsedTimes() {
+                // 経過時間の表示のみを更新（DOMの再構築を避ける）
+                this.customers.forEach(customer => {
+                    const elapsedTimeElement = document.querySelector(`#elapsed-${customer.id}`);
+                    if (elapsedTimeElement) {
+                        if (customer.isActive) {
+                            // 入店中は現在の経過時間を表示
+                            elapsedTimeElement.textContent = this.formatElapsedTime(customer.elapsedSeconds);
+                        } else if (customer.isCheckedOut && customer.displayedElapsedSeconds !== null) {
+                            // 退店中は退店時の時間を表示（固定）
+                            elapsedTimeElement.textContent = this.formatElapsedTime(customer.displayedElapsedSeconds);
+                        }
+                    }
+                });
+            }
+
+            playAlert() {
+                // 音を2回鳴らす
+                this.alertSound.currentTime = 0;
+                this.alertSound.play().catch(e => console.log('Audio play failed:', e));
+                
+                setTimeout(() => {
+                    this.alertSound.currentTime = 0;
+                    this.alertSound.play().catch(e => console.log('Audio play failed:', e));
+                }, 500); // 0.5秒後に2回目
+            }
+
+            formatTime(date) {
+                if (!date) return '--:--';
+                return date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            formatElapsedTime(seconds) {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+
+            render() {
+                const t = this.translations[this.currentLang];
+                const grid = document.getElementById('customerGrid');
+                
+                grid.innerHTML = this.customers.map(customer => {
+                    const cardClass = customer.hasAlert ? 'customer-card alert' : 
+                                    customer.isActive ? 'customer-card active' : 'customer-card';
+                    
+                    const hasData = customer.checkinTime || customer.checkoutTime;
+                    
+                    // 表示する経過時間を決定
+                    let displayTime = '00:00:00';
+                    if (customer.isActive) {
+                        displayTime = this.formatElapsedTime(customer.elapsedSeconds);
+                    } else if (customer.isCheckedOut && customer.displayedElapsedSeconds !== null) {
+                        displayTime = this.formatElapsedTime(customer.displayedElapsedSeconds);
+                    }
+                    
+                    // 顧客ごとに既存の予定時刻を考慮した選択肢を生成
+                    const timeOptions = this.generateTimeOptions(customer.plannedEndTime);
+                    
+                    return `
+                        <div class="${cardClass}">
+                            <div class="card-header">
+                                <span class="group-number">${t.groupNo}${customer.id}</span>
+                            </div>
+                            
+                            <div class="time-input-wrapper">
+                                <span class="time-input-label">${t.plannedTime}</span>
+                                <select class="time-select" 
+                                        onchange="manager.setPlannedEndTime(${customer.id}, this.value)"
+                                        onclick="event.stopPropagation()">
+                                    <option value="">--:--</option>
+                                    ${timeOptions.map(time => 
+                                        `<option value="${time}" ${customer.plannedEndTime === time ? 'selected' : ''}>${time}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            
+                            <div class="time-info">
+                                <span>${t.checkinTime}: ${this.formatTime(customer.checkinTime)}</span>
+                                <span>${t.checkoutTime}: ${this.formatTime(customer.checkoutTime)}</span>
+                            </div>
+                            
+                            <div class="elapsed-time" id="elapsed-${customer.id}">
+                                ${displayTime}
+                            </div>
+                            
+                            ${customer.hasAlert ? `
+                                <div class="alert-message">⚠️ ${t[customer.alertType] || customer.alertType}</div>
+                                <button class="btn-confirm" onclick="manager.confirmAlert(${customer.id})">
+                                    ${t.confirm}
+                                </button>
+                            ` : ''}
+                            
+                            <div class="buttons">
+                                <button class="btn-checkin" 
+                                        onclick="manager.checkin(${customer.id})"
+                                        ${customer.isActive ? 'disabled' : ''}>
+                                    ${t.checkin}
+                                </button>
+                                ${customer.isCheckedOut ? `
+                                    <button class="btn-checkout" 
+                                            onclick="manager.undoCheckout(${customer.id})">
+                                        ${t.undoCheckout}
+                                    </button>
+                                ` : `
+                                    <button class="btn-checkout" 
+                                            onclick="manager.checkout(${customer.id})"
+                                            ${!customer.isActive ? 'disabled' : ''}>
+                                        ${t.checkout}
+                                    </button>
+                                `}
+                            </div>
+                            <button class="btn-cancel" 
+                                    onclick="manager.confirmCancel(${customer.id})"
+                                    ${!hasData ? 'disabled' : ''}>
+                                ${t.cancel}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+                // モーダルのボタンテキストも更新
+                document.getElementById('modalYes').textContent = t.yes;
+                const modalNoBtn = document.querySelector('.modal-btn-no');
+                if (modalNoBtn) {
+                    modalNoBtn.textContent = t.no;
+                }
+                
+                // レイアウトを更新
+                this.updateGridLayout();
+            }
+        }
+
+        const manager = new CustomerManager();
+        
+        // Service Worker登録（PWA対応）
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
+        }
+    </script>
+</body>
+</html>
